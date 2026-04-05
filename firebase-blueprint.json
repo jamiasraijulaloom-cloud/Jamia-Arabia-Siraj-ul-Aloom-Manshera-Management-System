@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "principal", "teacher", "accountant", "receptionist", "security", "driver"] },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "gender": { "type": "string" },
+        "dateOfBirth": { "type": "string" },
+        "admissionDate": { "type": "string" },
+        "classId": { "type": "string" },
+        "sectionId": { "type": "string" },
+        "guardianName": { "type": "string" },
+        "guardianPhone": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["rollNumber", "firstName", "lastName", "classId"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Staff information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["employeeId", "firstName", "lastName", "role"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Attendance records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "entityId": { "type": "string" },
+        "entityType": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["entityId", "entityType", "date", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "UserProfile",
+      "description": "User profiles"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Student records"
+    },
+    "/staff/{staffId}": {
+      "schema": "Staff",
+      "description": "Staff records"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "Attendance records"
+    },
+    "/classes/{classId}": {
+      "schema": "object",
+      "description": "Classes"
+    },
+    "/sections/{sectionId}": {
+      "schema": "object",
+      "description": "Sections"
+    },
+    "/subjects/{subjectId}": {
+      "schema": "object",
+      "description": "Subjects"
+    },
+    "/exams/{examId}": {
+      "schema": "object",
+      "description": "Exams"
+    },
+    "/examResults/{resultId}": {
+      "schema": "object",
+      "description": "Exam results"
+    },
+    "/feePayments/{paymentId}": {
+      "schema": "object",
+      "description": "Fee payments"
+    },
+    "/salaryPayments/{paymentId}": {
+      "schema": "object",
+      "description": "Salary payments"
+    }
+  }
+}

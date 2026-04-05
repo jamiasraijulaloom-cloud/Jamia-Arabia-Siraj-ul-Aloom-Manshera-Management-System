@@ -1,0 +1,8 @@
+{
+  "name": "Jamia Arabia Siraj ul Aloom Manshera Management System",
+  "description": "A comprehensive school management system by Abdulrehman Habib featuring student enrollment, attendance, exam management, staff salaries, and more.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
