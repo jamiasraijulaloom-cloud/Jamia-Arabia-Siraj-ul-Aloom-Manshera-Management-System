@@ -144,14 +144,35 @@ export function FaceAttendance() {
 
   const startVideo = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+      // Try with preferred constraints first
+      const constraints = { 
+        video: { 
+          facingMode: { ideal: 'user' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      };
+      
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        console.warn("Failed with ideal constraints, trying basic video:true", e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsAttendanceRunning(true);
       }
     } catch (err) {
       console.error("Error starting video:", err);
-      toast.error("Could not access camera.");
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (errorMsg.includes('Requested device not found') || errorMsg.includes('NotFoundError')) {
+        toast.error("No camera found on this device.");
+      } else {
+        toast.error("Could not access camera. Please check permissions.");
+      }
     }
   };
 

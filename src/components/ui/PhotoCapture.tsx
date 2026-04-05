@@ -6,6 +6,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from './button';
 import { Camera, RefreshCw, Check, X } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PhotoCaptureProps {
   onCapture: (base64Photo: string) => void;
@@ -21,9 +22,23 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: 640, height: 480 } 
-      });
+      // Try with preferred constraints first
+      const constraints = { 
+        video: { 
+          facingMode: { ideal: 'user' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      };
+      
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        console.warn("Failed with ideal constraints, trying basic video:true", e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
@@ -31,7 +46,12 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
       }
     } catch (err) {
       console.error("Error accessing camera:", err);
-      alert("Could not access camera. Please check permissions.");
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      if (errorMsg.includes('Requested device not found') || errorMsg.includes('NotFoundError')) {
+        toast.error("No camera found on this device.");
+      } else {
+        toast.error("Could not access camera. Please check permissions.");
+      }
     }
   }, []);
 
