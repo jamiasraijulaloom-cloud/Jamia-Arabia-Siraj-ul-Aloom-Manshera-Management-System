@@ -139,11 +139,9 @@ export default function StaffManager() {
           <p className="text-slate-500 text-sm">Manage employees, roles, and access levels.</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus size={18} />
-              Add Staff Member
-            </Button>
+          <DialogTrigger render={<Button className="gap-2" />}>
+            <Plus size={18} />
+            Add Staff Member
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>

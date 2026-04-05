@@ -12,15 +12,17 @@ service cloud.firestore {
     
     function isAdmin() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'principal' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'principal']) ||
         request.auth.token.email == "jamiasraijulaloom@gmail.com"
       );
     }
 
     function isStaff() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'principal', 'teacher', 'accountant', 'receptionist']
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'principal', 'teacher', 'accountant', 'receptionist']) ||
+        request.auth.token.email == "jamiasraijulaloom@gmail.com"
       );
     }
 
@@ -30,17 +32,17 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
-      allow read: if isAuthenticated();
+      allow read, list: if isAuthenticated();
       allow write: if isStaff();
     }
 
     match /staff/{staffId} {
-      allow read: if isAuthenticated();
+      allow read, list: if isAuthenticated();
       allow write: if isAdmin();
     }
 
     match /attendance/{attendanceId} {
-      allow read: if isAuthenticated();
+      allow read, list: if isAuthenticated();
       allow write: if isStaff();
     }
 

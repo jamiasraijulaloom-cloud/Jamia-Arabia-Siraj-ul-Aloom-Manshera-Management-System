@@ -267,8 +267,8 @@ function AddClassDialog({ onAdd }: { onAdd: (name: string, level: string) => voi
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-2"><Plus size={16} /> Add Class</Button>
+      <DialogTrigger render={<Button size="sm" className="gap-2" />}>
+        <Plus size={16} /> Add Class
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -307,8 +307,8 @@ function AddSubjectDialog({ onAdd }: { onAdd: (name: string, code: string) => vo
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button size="sm" className="gap-2"><Plus size={16} /> Add Subject</Button>
+      <DialogTrigger render={<Button size="sm" className="gap-2" />}>
+        <Plus size={16} /> Add Subject
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

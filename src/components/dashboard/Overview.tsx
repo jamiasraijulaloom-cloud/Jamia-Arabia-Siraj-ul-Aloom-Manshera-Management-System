@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, getDocs, limit, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { 
   Users, 
@@ -60,6 +60,17 @@ export default function Overview() {
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
+        // Log detailed error for AIS Agent to diagnose
+        const errInfo = {
+          error: error instanceof Error ? error.message : String(error),
+          authInfo: {
+            userId: auth.currentUser?.uid,
+            email: auth.currentUser?.email,
+          },
+          operationType: 'list',
+          path: 'students/staff'
+        };
+        console.error('Firestore Error Detailed:', JSON.stringify(errInfo));
       } finally {
         setLoading(false);
       }

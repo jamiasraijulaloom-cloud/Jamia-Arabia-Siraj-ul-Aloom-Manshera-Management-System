@@ -148,14 +148,12 @@ export default function DashboardLayout({ profile }: DashboardLayoutProps) {
             </Button>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 px-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.photoURL} />
-                    <AvatarFallback>{profile?.displayName?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
+            <DropdownMenuTrigger render={<Button variant="ghost" className="flex items-center gap-2 px-2" />}>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.photoURL} />
+                <AvatarFallback>{profile?.displayName?.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
