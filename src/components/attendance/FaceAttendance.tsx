@@ -10,8 +10,9 @@ import { db } from '../../firebase';
 import { Student, Staff, Attendance } from '../../types';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import { Camera, Loader2, CheckCircle2, User, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, CheckCircle2, User, AlertCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { verifyFaceWithGemini, FaceVerificationResult } from '../../services/geminiFaceService';
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
 
@@ -21,6 +22,8 @@ export function FaceAttendance() {
   const [labeledDescriptors, setLabeledDescriptors] = useState<faceapi.LabeledFaceDescriptors[]>([]);
   const [lastMarked, setLastMarked] = useState<{ name: string; time: string } | null>(null);
   const [loadingProgress, setLoadingProgress] = useState('');
+  const [isVerifyingWithAI, setIsVerifyingWithAI] = useState(false);
+  const [useAIForLiveness, setUseAIForLiveness] = useState(true);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -119,11 +122,38 @@ export function FaceAttendance() {
     }
   }, [modelsLoaded, labeledDescriptors.length]);
 
-  const markAttendance = async (label: string) => {
+  const markAttendance = async (label: string, liveFrame?: string) => {
     const [type, id, name] = label.split(':');
     
     // Avoid double marking in the same session
     if (processedTodayRef.current.has(id)) return;
+
+    // AI Verification (Liveness & High Confidence)
+    if (useAIForLiveness && liveFrame) {
+      setIsVerifyingWithAI(true);
+      try {
+        // Find the reference photo for this person
+        const studentsSnap = await getDocs(collection(db, 'students'));
+        const staffSnap = await getDocs(collection(db, 'staff'));
+        const all = [...studentsSnap.docs, ...staffSnap.docs].map(d => ({ id: d.id, ...d.data() } as any));
+        const person = all.find(p => p.id === id);
+        
+        if (person && person.photoURL) {
+          const aiResult: FaceVerificationResult = await verifyFaceWithGemini(person.photoURL, liveFrame);
+          
+          if (!aiResult.isMatch || !aiResult.isLive) {
+            console.warn("AI Verification Failed:", aiResult.errorMessage || "Not a match or not live");
+            setIsVerifyingWithAI(false);
+            return; // Skip marking if AI fails
+          }
+          console.log("AI Verification Success:", aiResult);
+        }
+      } catch (err) {
+        console.error("AI Verification Error:", err);
+      } finally {
+        setIsVerifyingWithAI(false);
+      }
+    }
     
     const today = new Date().toISOString().split('T')[0];
     
@@ -241,8 +271,21 @@ export function FaceAttendance() {
 
             // Alignment check: Ensure landmarks are detected
             if (detection.landmarks && result.label !== 'unknown' && result.distance < 0.45) {
+              // Capture a frame for AI verification if needed
+              let liveFrame = undefined;
+              if (useAIForLiveness) {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = video.videoWidth;
+                tempCanvas.height = video.videoHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (tempCtx) {
+                  tempCtx.drawImage(video, 0, 0);
+                  liveFrame = tempCanvas.toDataURL('image/jpeg', 0.7);
+                }
+              }
+              
               // Only mark if confidence is high enough
-              markAttendance(result.label);
+              markAttendance(result.label, liveFrame);
             }
           });
         }
@@ -301,11 +344,34 @@ export function FaceAttendance() {
                 ref={canvasRef}
                 className="absolute top-0 left-0 w-full h-full pointer-events-none"
               />
-              <div className="absolute bottom-4 right-4">
-                <Button variant="destructive" onClick={stopVideo} size="sm">
-                  Stop Bot
-                </Button>
+              
+              {/* Live Video Call Aesthetic Overlays */}
+              <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
+                <div className="flex items-center gap-1.5 bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold tracking-wider animate-pulse">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  LIVE
+                </div>
+                <div className="bg-black/40 backdrop-blur-md text-white px-2 py-1 rounded text-[10px] font-medium border border-white/10">
+                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </div>
               </div>
+
+              {/* Scanning Line Animation */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+                <div className="w-full h-[2px] bg-primary/40 shadow-[0_0_15px_rgba(var(--primary),0.5)] absolute top-0 animate-[scan_3s_linear_infinite]" />
+              </div>
+
+              <div className="absolute bottom-4 right-4 flex items-center gap-2 z-10">
+            {isVerifyingWithAI && (
+              <div className="bg-primary/90 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 animate-pulse">
+                <ShieldCheck size={14} />
+                AI Liveness Check...
+              </div>
+            )}
+            <Button variant="destructive" onClick={stopVideo} size="sm">
+              Stop Bot
+            </Button>
+          </div>
             </>
           )}
         </CardContent>
@@ -339,12 +405,29 @@ export function FaceAttendance() {
 
         <Card className="border-none shadow-md shadow-slate-200/60 bg-slate-900 text-white">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <AlertCircle size={20} className="text-amber-400" />
-              Bot Instructions
+            <CardTitle className="text-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={20} className="text-primary" />
+                AI Enhanced Bot
+              </div>
+              <div className="flex items-center gap-2">
+                <div 
+                  className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${useAIForLiveness ? 'bg-primary' : 'bg-slate-700'}`}
+                  onClick={() => setUseAIForLiveness(!useAIForLiveness)}
+                >
+                  <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${useAIForLiveness ? 'left-6' : 'left-1'}`} />
+                </div>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-300">
+            <div className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+              <ShieldCheck className="text-primary shrink-0 mt-1" size={18} />
+              <div>
+                <p className="font-bold text-white">Gemini 3 Flash Powered</p>
+                <p className="text-xs opacity-70">Verifies liveness and matches faces with high precision to prevent attendance fraud.</p>
+              </div>
+            </div>
             <p>1. Ensure good lighting on the subject's face.</p>
             <p>2. Only one person should be in the frame at a time for best results.</p>
             <p>3. The system matches against photos taken during registration.</p>

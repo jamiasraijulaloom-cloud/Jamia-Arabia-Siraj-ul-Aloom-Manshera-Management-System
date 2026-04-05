@@ -5,8 +5,9 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { Button } from './button';
-import { Camera, RefreshCw, Check, X } from 'lucide-react';
+import { Camera, RefreshCw, Check, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { checkPhotoQualityWithGemini } from '../../services/geminiFaceService';
 
 interface PhotoCaptureProps {
   onCapture: (base64Photo: string) => void;
@@ -16,6 +17,8 @@ interface PhotoCaptureProps {
 export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(initialPhoto || null);
+  const [isCheckingQuality, setIsCheckingQuality] = useState(false);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -63,7 +66,7 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
     setIsStreaming(false);
   }, []);
 
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback(async () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -73,6 +76,23 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         const base64 = canvas.toDataURL('image/jpeg', 0.8);
+        
+        // AI Quality Check
+        setIsCheckingQuality(true);
+        try {
+          const quality = await checkPhotoQualityWithGemini(base64);
+          if (!quality.isGoodQuality || !quality.isLive) {
+            toast.error(quality.errorMessage || "Photo quality is low or not a live person. Please try again.");
+            setIsCheckingQuality(false);
+            return;
+          }
+          toast.success("AI Quality Check Passed!");
+        } catch (err) {
+          console.warn("AI Quality Check failed, proceeding anyway", err);
+        } finally {
+          setIsCheckingQuality(false);
+        }
+
         setCapturedPhoto(base64);
         onCapture(base64);
         stopCamera();
@@ -90,13 +110,19 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
     <div className="space-y-4">
       <div className="relative aspect-video bg-muted rounded-lg overflow-hidden border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
         {isStreaming ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover"
-          />
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-rose-600 text-white px-2 py-1 rounded text-[10px] font-bold tracking-wider animate-pulse z-10">
+              <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              LIVE CAMERA
+            </div>
+          </>
         ) : capturedPhoto ? (
           <img
             src={capturedPhoto}
@@ -121,9 +147,13 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
         )}
 
         {isStreaming && (
-          <Button type="button" onClick={capturePhoto} className="gap-2">
-            <Check className="w-4 h-4" />
-            Capture Photo
+          <Button type="button" onClick={capturePhoto} className="gap-2" disabled={isCheckingQuality}>
+            {isCheckingQuality ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+            {isCheckingQuality ? "Checking Quality..." : "Capture Photo"}
           </Button>
         )}
 
