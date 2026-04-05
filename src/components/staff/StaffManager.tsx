@@ -42,6 +42,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { PhotoCapture } from '../ui/PhotoCapture';
+import { Camera } from 'lucide-react';
 
 const staffSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required'),
@@ -53,6 +55,7 @@ const staffSchema = z.object({
   address: z.string().min(5, 'Address is required'),
   basicSalary: z.coerce.number(),
   allowances: z.coerce.number(),
+  photo: z.string().optional(),
 });
 
 export default function StaffManager() {
@@ -84,6 +87,7 @@ export default function StaffManager() {
       address: '',
       basicSalary: 0,
       allowances: 0,
+      photo: '',
     },
   });
 
@@ -101,6 +105,7 @@ export default function StaffManager() {
           basicSalary: values.basicSalary,
           allowances: values.allowances,
         },
+        photoURL: values.photo,
         status: 'active',
         createdAt: Date.now(),
       };
@@ -265,6 +270,21 @@ export default function StaffManager() {
                       </FormItem>
                     )}
                   />
+                  <div className="col-span-2">
+                    <FormLabel className="mb-2 block">Staff Photo</FormLabel>
+                    <FormField
+                      control={form.control}
+                      name="photo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <PhotoCapture onCapture={field.onChange} initialPhoto={field.value} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit">Save Staff Member</Button>

@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { cn } from '../../lib/utils';
+import { FaceAttendance } from './FaceAttendance';
+import { Camera } from 'lucide-react';
 
 export default function AttendanceManager() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -129,6 +131,10 @@ export default function AttendanceManager() {
           <TabsTrigger value="biometric" className="gap-2">
             <Fingerprint size={16} />
             Biometric
+          </TabsTrigger>
+          <TabsTrigger value="face" className="gap-2">
+            <Camera size={16} />
+            Face Bot
           </TabsTrigger>
         </TabsList>
 
@@ -305,6 +311,10 @@ export default function AttendanceManager() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="face">
+          <FaceAttendance />
         </TabsContent>
       </Tabs>
     </div>

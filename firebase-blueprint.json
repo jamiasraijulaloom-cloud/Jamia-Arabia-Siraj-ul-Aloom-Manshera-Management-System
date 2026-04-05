@@ -30,7 +30,8 @@
         "sectionId": { "type": "string" },
         "guardianName": { "type": "string" },
         "guardianPhone": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "photo": { "type": "string", "description": "Base64 encoded photo" }
       },
       "required": ["rollNumber", "firstName", "lastName", "classId"]
     },
@@ -44,7 +45,8 @@
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
         "role": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "photo": { "type": "string", "description": "Base64 encoded photo" }
       },
       "required": ["employeeId", "firstName", "lastName", "role"]
     },
