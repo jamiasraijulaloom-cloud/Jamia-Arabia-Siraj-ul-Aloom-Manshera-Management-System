@@ -33,6 +33,7 @@ export interface Student {
     discount: number;
   };
   photoURL?: string;
+  photos?: string[];
   fingerprintId?: string;
   barcode?: string;
   status: 'active' | 'inactive' | 'graduated' | 'left';
@@ -53,6 +54,7 @@ export interface Staff {
     allowances: number;
   };
   photoURL?: string;
+  photos?: string[];
   fingerprintId?: string;
   status: 'active' | 'inactive';
   createdAt: number;

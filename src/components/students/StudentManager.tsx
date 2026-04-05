@@ -95,6 +95,8 @@ function StudentList() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -121,6 +123,20 @@ function StudentList() {
       } catch (error) {
         toast.error('Failed to delete student');
       }
+    }
+  };
+
+  const handleAddPhoto = async (photo: string) => {
+    if (!selectedStudent) return;
+    try {
+      const updatedPhotos = [...(selectedStudent.photos || []), photo];
+      await updateDoc(doc(db, 'students', selectedStudent.id), {
+        photos: updatedPhotos
+      });
+      toast.success('Additional photo saved for better recognition accuracy.');
+      setIsPhotoDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to save additional photo');
     }
   };
 
@@ -235,6 +251,18 @@ function StudentList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-primary"
+                            onClick={() => {
+                              setSelectedStudent(student);
+                              setIsPhotoDialogOpen(true);
+                            }}
+                            title="Add more photos for better accuracy"
+                          >
+                            <Camera size={18} />
+                          </Button>
                           <Button variant="ghost" size="icon" className="text-slate-400 hover:text-primary">
                             <Eye size={18} />
                           </Button>
@@ -259,6 +287,23 @@ function StudentList() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isPhotoDialogOpen} onOpenChange={setIsPhotoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Reference Photo</DialogTitle>
+            <DialogDescription>
+              Take another photo of {selectedStudent?.firstName} from a different angle or lighting to improve face recognition accuracy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <PhotoCapture onCapture={handleAddPhoto} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPhotoDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -309,6 +354,7 @@ function EnrollmentForm() {
           discount: values.discount,
         },
         photoURL: values.photo,
+        photos: values.photo ? [values.photo] : [],
         status: 'active',
         createdAt: Date.now(),
       };

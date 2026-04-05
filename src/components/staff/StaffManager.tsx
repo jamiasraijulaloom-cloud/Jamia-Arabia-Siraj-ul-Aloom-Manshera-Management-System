@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, addDoc, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, deleteDoc, doc, updateDoc, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Staff, Role } from '../../types';
 import { Button } from '../ui/button';
@@ -63,6 +63,9 @@ export default function StaffManager() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false);
+  const [loadingStaff, setLoadingStaff] = useState(true);
 
   useEffect(() => {
     const q = query(collection(db, 'staff'), orderBy('createdAt', 'desc'));
@@ -106,6 +109,7 @@ export default function StaffManager() {
           allowances: values.allowances,
         },
         photoURL: values.photo,
+        photos: values.photo ? [values.photo] : [],
         status: 'active',
         createdAt: Date.now(),
       };
@@ -135,6 +139,20 @@ export default function StaffManager() {
     s.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddPhoto = async (photo: string) => {
+    if (!selectedStaff) return;
+    try {
+      const updatedPhotos = [...(selectedStaff.photos || []), photo];
+      await updateDoc(doc(db, 'staff', selectedStaff.id), {
+        photos: updatedPhotos
+      });
+      toast.success('Additional photo saved for better recognition accuracy.');
+      setIsPhotoDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to save additional photo');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -358,6 +376,18 @@ export default function StaffManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-slate-400 hover:text-primary"
+                            onClick={() => {
+                              setSelectedStaff(member);
+                              setIsPhotoDialogOpen(true);
+                            }}
+                            title="Add more photos for better accuracy"
+                          >
+                            <Camera size={16} />
+                          </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600"><Edit size={16} /></Button>
                           <Button 
                             variant="ghost" 
@@ -421,6 +451,23 @@ export default function StaffManager() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={isPhotoDialogOpen} onOpenChange={setIsPhotoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Reference Photo</DialogTitle>
+            <DialogDescription>
+              Take another photo of {selectedStaff?.firstName} from a different angle or lighting to improve face recognition accuracy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <PhotoCapture onCapture={handleAddPhoto} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPhotoDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

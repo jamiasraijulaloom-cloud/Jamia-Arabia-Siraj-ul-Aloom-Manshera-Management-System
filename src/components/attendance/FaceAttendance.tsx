@@ -37,6 +37,7 @@ export function FaceAttendance() {
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
         ]);
         setModelsLoaded(true);
         setLoadingProgress('Models loaded successfully.');
@@ -73,17 +74,26 @@ export function FaceAttendance() {
       
       for (const entity of allEntities) {
         try {
-          const img = await faceapi.fetchImage(entity.photoURL);
-          const detection = await faceapi.detectSingleFace(img)
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+          const photosToProcess = [entity.photoURL, ...(entity.photos || [])].filter(Boolean);
+          const entityDescriptors: Float32Array[] = [];
+
+          for (const photo of photosToProcess) {
+            const img = await faceapi.fetchImage(photo);
+            const detection = await faceapi.detectSingleFace(img)
+              .withFaceLandmarks()
+              .withFaceDescriptor();
+            
+            if (detection) {
+              entityDescriptors.push(detection.descriptor);
+            }
+          }
           
-          if (detection) {
+          if (entityDescriptors.length > 0) {
             const label = `${entity.type}:${entity.id}:${entity.firstName} ${entity.lastName}`;
-            descriptors.push(new faceapi.LabeledFaceDescriptors(label, [detection.descriptor]));
+            descriptors.push(new faceapi.LabeledFaceDescriptors(label, entityDescriptors));
           }
         } catch (e) {
-          console.warn(`Could not process photo for ${entity.firstName}`, e);
+          console.warn(`Could not process photos for ${entity.firstName}`, e);
         }
       }
 
@@ -102,6 +112,12 @@ export function FaceAttendance() {
       prepareReferenceData();
     }
   }, [modelsLoaded, prepareReferenceData]);
+
+  useEffect(() => {
+    if (modelsLoaded && labeledDescriptors.length > 0 && !isAttendanceRunning) {
+      startVideo();
+    }
+  }, [modelsLoaded, labeledDescriptors.length]);
 
   const markAttendance = async (label: string) => {
     const [type, id, name] = label.split(':');
@@ -196,6 +212,7 @@ export function FaceAttendance() {
       intervalRef.current = setInterval(async () => {
         const detections = await faceapi.detectAllFaces(video)
           .withFaceLandmarks()
+          .withFaceExpressions()
           .withFaceDescriptors();
         
         const resizedDetections = faceapi.resizeResults(detections, displaySize);
@@ -206,18 +223,30 @@ export function FaceAttendance() {
           resizedDetections.forEach(detection => {
             const result = faceMatcherRef.current!.findBestMatch(detection.descriptor);
             const box = detection.detection.box;
+            const expressions = detection.expressions;
+            const bestExpression = Object.entries(expressions).reduce((a, b) => a[1] > b[1] ? a : b)[0];
+            
+            const label = result.label === 'unknown' 
+              ? 'Unknown' 
+              : `${result.label.split(':')[2]} (${Math.round((1 - result.distance) * 100)}%)`;
+
             const drawBox = new faceapi.draw.DrawBox(box, { 
-              label: result.toString(),
-              boxColor: result.label === 'unknown' ? 'red' : 'green' 
+              label: `${label} - ${bestExpression}`,
+              boxColor: result.label === 'unknown' ? '#ef4444' : '#10b981' 
             });
             drawBox.draw(canvas);
+            
+            // Draw landmarks for alignment visualization
+            faceapi.draw.drawFaceLandmarks(canvas, detection.landmarks);
 
-            if (result.label !== 'unknown' && result.distance < 0.5) {
+            // Alignment check: Ensure landmarks are detected
+            if (detection.landmarks && result.label !== 'unknown' && result.distance < 0.45) {
+              // Only mark if confidence is high enough
               markAttendance(result.label);
             }
           });
         }
-      }, 1000);
+      }, 800);
     }
 
     return () => {
