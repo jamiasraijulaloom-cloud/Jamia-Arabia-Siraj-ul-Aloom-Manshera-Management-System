@@ -143,6 +143,7 @@ export function FaceAttendance() {
           
           if (!aiResult.isMatch || !aiResult.isLive) {
             console.warn("AI Verification Failed:", aiResult.errorMessage || "Not a match or not live");
+            toast.error(`AI Verification Failed: ${aiResult.errorMessage || "Identity or Liveness not confirmed"}`);
             setIsVerifyingWithAI(false);
             return; // Skip marking if AI fails
           }
@@ -270,7 +271,7 @@ export function FaceAttendance() {
             faceapi.draw.drawFaceLandmarks(canvas, detection.landmarks);
 
             // Alignment check: Ensure landmarks are detected
-            if (detection.landmarks && result.label !== 'unknown' && result.distance < 0.45) {
+            if (detection.landmarks && result.label !== 'unknown' && result.distance < 0.5) {
               // Capture a frame for AI verification if needed
               let liveFrame = undefined;
               if (useAIForLiveness) {

@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from './button';
-import { Camera, RefreshCw, Check, X, ShieldCheck, Loader2 } from 'lucide-react';
+import { Camera, RefreshCw, Check, X, ShieldCheck, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { checkPhotoQualityWithGemini } from '../../services/geminiFaceService';
 
@@ -18,6 +18,7 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(initialPhoto || null);
   const [isCheckingQuality, setIsCheckingQuality] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -81,12 +82,14 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
         setIsCheckingQuality(true);
         try {
           const quality = await checkPhotoQualityWithGemini(base64);
-          if (!quality.isGoodQuality || !quality.isLive) {
-            toast.error(quality.errorMessage || "Photo quality is low or not a live person. Please try again.");
+          if (!quality.isGoodQuality) {
+            toast.error(quality.errorMessage || "Photo quality is low. Please ensure your face is clear and well-lit.");
             setIsCheckingQuality(false);
-            return;
+            // We still allow capture if it's just a quality warning, but if it's a strict failure we stop
+            if (quality.qualityScore < 0.3) return; 
+          } else {
+            toast.success("AI Quality Check Passed!");
           }
-          toast.success("AI Quality Check Passed!");
         } catch (err) {
           console.warn("AI Quality Check failed, proceeding anyway", err);
         } finally {
@@ -105,6 +108,24 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
     onCapture('');
     startCamera();
   }, [onCapture, startCamera]);
+
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setCapturedPhoto(base64);
+        onCapture(base64);
+        toast.success("Photo uploaded successfully");
+      };
+      reader.readAsDataURL(file);
+    }
+  }, [onCapture]);
+
+  const triggerUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="space-y-4">
@@ -131,19 +152,33 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="text-center p-6">
-            <Camera className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Camera is off</p>
+          <div className="text-center p-6 bg-slate-50 w-full h-full flex flex-col items-center justify-center">
+            <Camera className="w-12 h-12 mx-auto text-slate-300 mb-2" />
+            <p className="text-sm text-slate-500 font-medium">Camera is currently off</p>
+            <p className="text-xs text-slate-400 mt-1">Click 'Start Capture' to use your camera</p>
           </div>
         )}
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center flex-wrap gap-2">
         {!isStreaming && !capturedPhoto && (
-          <Button type="button" onClick={startCamera} variant="outline" className="gap-2">
-            <Camera className="w-4 h-4" />
-            Start Camera
-          </Button>
+          <>
+            <Button type="button" onClick={startCamera} variant="default" className="gap-2 bg-primary hover:bg-primary/90">
+              <Camera className="w-4 h-4" />
+              Start Capture
+            </Button>
+            <Button type="button" onClick={triggerUpload} variant="outline" className="gap-2">
+              <Upload className="w-4 h-4" />
+              Upload Photo
+            </Button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileUpload} 
+            />
+          </>
         )}
 
         {isStreaming && (
@@ -153,15 +188,21 @@ export function PhotoCapture({ onCapture, initialPhoto }: PhotoCaptureProps) {
             ) : (
               <Check className="w-4 h-4" />
             )}
-            {isCheckingQuality ? "Checking Quality..." : "Capture Photo"}
+            {isCheckingQuality ? "Checking Quality..." : "Capture Now"}
           </Button>
         )}
 
         {capturedPhoto && (
-          <Button type="button" onClick={resetPhoto} variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Retake Photo
-          </Button>
+          <>
+            <Button type="button" onClick={resetPhoto} variant="outline" className="gap-2">
+              <RefreshCw className="w-4 h-4" />
+              Retake
+            </Button>
+            <Button type="button" onClick={triggerUpload} variant="ghost" className="gap-2">
+              <Upload className="w-4 h-4" />
+              Change Photo
+            </Button>
+          </>
         )}
 
         {isStreaming && (
